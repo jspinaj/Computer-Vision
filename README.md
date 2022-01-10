@@ -13,5 +13,6 @@ Este repositorio contiene el desarrollo del proyecto de Técnicas de Inteligenci
 3.  Segmentación 
 4.  Clasificadores 
 
+![flowchart](media/image_processing_flowchart.png)
 
 

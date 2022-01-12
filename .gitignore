@@ -1,2 +1,9 @@
 .vscode
 
+data/traffic_signs
+
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+## temporal office files
+~$*     

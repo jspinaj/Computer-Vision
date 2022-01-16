@@ -52,14 +52,10 @@ data/traffic_signs/Flecha_Izquierda/Flechaizq6.jpg
 data/traffic_signs/Flecha_Izquierda/Flechaizq7.jpg
 data/traffic_signs/Flecha_Izquierda/Flechaizq8.jpg
 data/traffic_signs/Flecha_Izquierda/Flechaizq9.jpg
-data/traffic_signs/multiple.jpg
 data/traffic_signs/No_pase/Nopase1.jpg
 data/traffic_signs/No_pase/Nopase2.jpg
 data/traffic_signs/No_pase/Nopase3.jpg
 data/traffic_signs/No_pase/Nopase4.jpg
-data/traffic_signs/pa1.jpg
-data/traffic_signs/pa2.jpg
-data/traffic_signs/pa3.jpg
 data/traffic_signs/Pare/Pare1 (1).jpg
 data/traffic_signs/Pare/Pare10.jpg
 data/traffic_signs/Pare/Pare11.jpg

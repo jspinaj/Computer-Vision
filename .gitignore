@@ -1,6 +1,7 @@
 .vscode
 
 data/traffic_signs
+data/output
 
 .ipynb_checkpoints
 */.ipynb_checkpoints/*

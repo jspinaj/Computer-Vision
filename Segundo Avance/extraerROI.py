@@ -19,23 +19,15 @@ def extraccion_ROI(ruta):
     ima_umb=umbral_hsv_rojo(ima)
     ima_llenado=llenado(ima_umb)
     ima_erosion=erosion(ima_llenado,18,18,10,"elipse")
-    ima_apertura=apertura(ima_erosion,10,10,"elipse")
+    ima_apertura=apertura(ima_erosion,22,22,"elipse")
     ima_dilatacion=dilatacion(ima_apertura,20,20,10,"elipse")
     ima_final=cv2.bitwise_and(ima,ima,mask=ima_dilatacion)
-    ima_bw=cv2.cvtColor(ima_final,cv2.COLOR_BGR2GRAY)
-    #ret,th1 = cv2.threshold(ima_bw,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
-    ret,th1 = cv2.threshold(ima_bw,100,255,cv2.THRESH_BINARY)
-    plt.figure()
-    plt.subplot(3,3,1),plt.imshow(ima),plt.xticks([]), plt.yticks([]);
-    plt.subplot(3,3,2),plt.imshow(ima_umb,cmap="gray"),plt.xticks([]), plt.yticks([]);
-    plt.subplot(3,3,3),plt.imshow(ima_llenado,cmap="gray"),plt.xticks([]), plt.yticks([]);
-    plt.subplot(3,3,4),plt.imshow(ima_erosion,cmap="gray"),plt.xticks([]), plt.yticks([]);
-    plt.subplot(3,3,5),plt.imshow(ima_apertura,cmap="gray"),plt.xticks([]), plt.yticks([]);
-    plt.subplot(3,3,6),plt.imshow(ima_dilatacion,cmap="gray"),plt.xticks([]), plt.yticks([]);
-    plt.subplot(3,3,7),plt.imshow(ima_final),plt.xticks([]), plt.yticks([]);
-    plt.subplot(3,3,8),plt.imshow(ima_bw,cmap="gray"),plt.xticks([]), plt.yticks([]);
-    plt.subplot(3,3,9),plt.imshow(th1,cmap="gray"),plt.xticks([]), plt.yticks([]);
-    return th1
+    imagenROI,contornos=deteccion_ROI(ima, ima_dilatacion)
+    ima_color,ima_umbralizada,caracteristicas=obtener_caracteristicas(contornos,ima_final)
+    ima_prueba=[ima,ima_umb,ima_llenado,ima_erosion,ima_apertura,ima_dilatacion,ima_final]
+    return imagenROI,ima_umbralizada,caracteristicas,ima_prueba
+    
+    
 
 
 def umbral_hsv_rojo(imagen):
@@ -49,14 +41,32 @@ def umbral_hsv_rojo(imagen):
     maskRed = cv2.add(maskRed1,maskRed2)
     return maskRed
 
+def encontrar_semilla(imagen):
+    semilla=None
+    h,w=imagen.shape
+    h=h-1
+    w=w-1
+    if imagen[0,0]==0:
+        semilla=(0,0)
+    elif imagen[h,0]==0:
+        semilla=(h,0)
+    elif imagen[h,w]==0:
+        semilla=(h,w)
+    elif imagen[0,w]==0:
+        semilla=(0,w)
+    else:
+        print("no pudo encontrar una buena semilla")
+    return semilla
+
 def llenado(imagen):
     
     im_floodfill = imagen.copy()
     h, w = imagen.shape[:2]
     mask = np.zeros((h+2, w+2), np.uint8)
+    seed=encontrar_semilla(imagen)
 
     # Floodfill from point (0, 0)
-    cv2.floodFill(im_floodfill, mask, (0,0), 255);
+    cv2.floodFill(im_floodfill, mask, seed, 255);
 
      # Invert floodfilled image
 
@@ -109,3 +119,78 @@ def apertura(imagen,a,b,tipo):
         return imagen
     ima= cv2.morphologyEx(imagen, cv2.MORPH_OPEN, kernel)
     return ima
+
+def deteccion_ROI(imagen_inicial,imagen_regiones):
+    ima_contornos=imagen_inicial.copy()
+    kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
+    edges = cv2.morphologyEx(imagen_regiones, cv2.MORPH_GRADIENT, kernel)
+    contours, hierarchy = cv2.findContours(edges , cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+    for i in range(len(contours)):
+        x,y,w,h=cv2.boundingRect(contours[i])
+        area=str(cv2.contourArea(contours[i]))
+        cv2.rectangle(ima_contornos,(x,y),(x+w,y+h),(120,255,0),15)
+        cv2.drawContours (ima_contornos, contours, i, (0, 0, 255), 20)
+        cv2.putText(ima_contornos,str(i),(x,y-10),2,10,(0,255,0),10)
+    return ima_contornos,contours
+
+def obtener_caracteristicas(contornos,imagen):
+    caracteristicas=[]
+    imagenes=[]
+    imagenes_umbralizadas=[]
+    for i in range(len(contornos)):
+        cont=contornos[i]
+        #Area del contorno
+        area=cv2.contourArea(cont)
+        #Longitud del contorno
+        long=cv2.arcLength(cont,True)
+        #Posición del centroide
+        M = cv2.moments(cont)
+        cx = int(M['m10']/M['m00'])
+        cy = int(M['m01']/M['m00'])
+        cent=(cx,cy)
+        #compacidad
+        comp=long**2/area
+        #redondez
+        redon=4*np.pi*area/long**2
+        #mínimo rectangulo
+        rect = cv2.minAreaRect(cont)
+        box = cv2.boxPoints(rect)
+
+        #Longitudes rectangulo
+        a=cv2.arcLength(np.array([box[0],box[1]]),False)
+        b=cv2.arcLength(np.array([box[0],box[3]]),False)
+
+        largo=np.max([a,b])
+        corto=np.min([a,b])
+        rel=largo/corto
+    
+        #rectangulo limite
+        x,y,w,h=cv2.boundingRect(cont)
+        rect_lim={"x":x,
+                  "y":y,
+                  "w":w,
+                  "h":h}
+        if rel<1.5:
+            #cortar la imagen
+            imagen_cortada=imagen[y:y+h,x:x+w,:]
+            #hallar los momentos de Hu
+            ima_gris=cv2.cvtColor(imagen_cortada,cv2.COLOR_BGR2GRAY)
+            ret,th1 = cv2.threshold(ima_gris,100,255,cv2.THRESH_BINARY)
+            moments = cv2.moments(th1)
+            huMoments = cv2.HuMoments(moments)
+            diccionario={"Area":area,
+                         "Perimetro":long,
+                         "Centroide":cent,
+                         "Compacidad":comp,
+                         "Redondez":redon,
+                         "Minimo Rectangulo":box,
+                         "Lado largo":largo,
+                         "Lado corto":corto,
+                         "Relacion entre lados":rel,
+                         "Rectangulo limite":rect_lim,
+                         "Momentos de Hu":huMoments}
+        
+            caracteristicas.append(diccionario)
+            imagenes.append(imagen_cortada)
+            imagenes_umbralizadas.append(th1)
+    return imagenes, imagenes_umbralizadas, caracteristicas

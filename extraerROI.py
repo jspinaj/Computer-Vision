@@ -5,6 +5,7 @@ Created on Sun Jan 16 18:12:48 2022
 @author: j2seb
 """
 #importación de librerías
+import math 
 import cv2     #Librería OpenCV
 from IPython.display import Image   #Libreria impresión de imagenes
 import numpy as np                  #Importación numpy
@@ -18,12 +19,14 @@ def extraccion_ROI(ruta,img_category):
     ima=imagen
     # tresholding
     ima_umb=umbral_hsv_rojo(ima)
+
     # morphologic transformations
     ima_llenado=llenado(ima_umb)
     ima_erosion=erosion(ima_llenado,18,18,10,"elipse")
     ima_apertura=apertura(ima_erosion,22,22,"elipse")
     ima_dilatacion=dilatacion(ima_apertura,20,20,10,"elipse")
     ima_final=cv2.bitwise_and(ima,ima,mask=ima_dilatacion)
+    
     #Segementation
     imagenROI,contornos=deteccion_ROI(ima, ima_dilatacion)
     # feature detection
@@ -141,8 +144,8 @@ def deteccion_ROI(imagen_inicial,imagen_regiones):
     return ima_contornos,contours
 
 def obtener_caracteristicas(contornos,imagen,img_filename, img_category):
+    
     caracteristicas=[]
-    var=["defecto","defecto",0,0,0,0,0,0,0] 
     imagenes=[]
     imagenes_umbralizadas=[]
     for i in range(len(contornos)):
@@ -178,33 +181,33 @@ def obtener_caracteristicas(contornos,imagen,img_filename, img_category):
                   "y":y,
                   "w":w,
                   "h":h}
-        if rel<1.5:
-            #cortar la imagen
-            imagen_cortada=imagen[y:y+h,x:x+w,:]
-            #hallar los momentos de Hu
-            ima_gris=cv2.cvtColor(imagen_cortada,cv2.COLOR_BGR2GRAY)
-            ret,th1 = cv2.threshold(ima_gris,100,255,cv2.THRESH_BINARY)
-            moments = cv2.moments(th1)
-            huMoments = cv2.HuMoments(moments)
-            diccionario={"Area":area,
-                         "Perimetro":long_arc,
-                         "Centroide":cent,
-                         "Compacidad":comp,
-                         "Redondez":redon,
-                         "Minimo Rectangulo":box,
-                         "Lado largo":largo,
-                         "Lado corto":corto,
-                         "Relacion entre lados":rel,
-                         "Rectangulo limite":rect_lim,
-                         "Momentos de Hu":huMoments}
+        prop=[img_filename,"defecto"]+[0]*9+[i] 
+        #cortar la imagen
+        imagen_cortada=imagen[y:y+h,x:x+w,:]
+        #hallar los momentos de Hu
+        ima_gris=cv2.cvtColor(imagen_cortada,cv2.COLOR_BGR2GRAY)
+        ret,th1 = cv2.threshold(ima_gris,100,255,cv2.THRESH_BINARY)
+        moments = cv2.moments(th1)
+        huMoments = cv2.HuMoments(moments).flatten()
+        #print(huMoments)
+        #for i in range(0,7):
+        #    huMoments[i] =  -1* math.copysign(1.0, huMoments[i]) * math.log10(abs(huMoments[i]))
+        huMoments=huMoments.tolist()
         
-            caracteristicas.append(diccionario)
+        prop=[img_filename, img_category,long_arc,redon,rel]+huMoments+[i]
+        
+        if rel<1.5:
+                   
+            #caracteristicas.append(diccionario)
             imagenes.append(imagen_cortada)
             imagenes_umbralizadas.append(th1)
-            
-        var=[img_filename, img_category,long_arc,area,cx,cy,redon,rel,i]
-                   
-    return imagenes, imagenes_umbralizadas, var
+        else:
+            prop[1]="ruido"    
+        
+        
+        caracteristicas.append(prop)
+
+    return imagenes, imagenes_umbralizadas, caracteristicas
 
     # Functions
 

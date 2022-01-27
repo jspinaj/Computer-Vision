@@ -5,6 +5,7 @@ Created on Sun Jan 16 18:12:48 2022
 @author: j2seb
 """
 #importación de librerías
+import math 
 import cv2     #Librería OpenCV
 from IPython.display import Image   #Libreria impresión de imagenes
 import numpy as np                  #Importación numpy
@@ -12,19 +13,28 @@ from matplotlib import pyplot as plt  #Impresión de gráficas
 from PIL import Image
 
 
-def extraccion_ROI(ruta):
+def extraccion_ROI(ruta,img_category):
     imagen=cv2.imread(ruta)
     imagen=cv2.cvtColor(imagen,cv2.COLOR_BGR2RGB)
     ima=imagen
+    # tresholding
     ima_umb=umbral_hsv_rojo(ima)
+
+    # morphologic transformations
     ima_llenado=llenado(ima_umb)
     ima_erosion=erosion(ima_llenado,18,18,10,"elipse")
     ima_apertura=apertura(ima_erosion,22,22,"elipse")
     ima_dilatacion=dilatacion(ima_apertura,20,20,10,"elipse")
     ima_final=cv2.bitwise_and(ima,ima,mask=ima_dilatacion)
+    
+    #Segementation
     imagenROI,contornos=deteccion_ROI(ima, ima_dilatacion)
-    ima_color,ima_umbralizada,caracteristicas=obtener_caracteristicas(contornos,ima_final)
+    # feature detection
+    ima_color,ima_umbralizada,caracteristicas=obtener_caracteristicas(contornos,ima_final,ruta, img_category)
+    
+    # process
     ima_prueba=[ima,ima_umb,ima_llenado,ima_erosion,ima_apertura,ima_dilatacion,ima_final]
+
     return imagenROI,ima_umbralizada,caracteristicas,ima_prueba
     
     
@@ -133,7 +143,8 @@ def deteccion_ROI(imagen_inicial,imagen_regiones):
         cv2.putText(ima_contornos,str(i),(x,y-10),2,10,(0,255,0),10)
     return ima_contornos,contours
 
-def obtener_caracteristicas(contornos,imagen):
+def obtener_caracteristicas(contornos,imagen,img_filename, img_category):
+    
     caracteristicas=[]
     imagenes=[]
     imagenes_umbralizadas=[]
@@ -142,16 +153,16 @@ def obtener_caracteristicas(contornos,imagen):
         #Area del contorno
         area=cv2.contourArea(cont)
         #Longitud del contorno
-        long=cv2.arcLength(cont,True)
+        long_arc=cv2.arcLength(cont,True)
         #Posición del centroide
         M = cv2.moments(cont)
         cx = int(M['m10']/M['m00'])
         cy = int(M['m01']/M['m00'])
         cent=(cx,cy)
         #compacidad
-        comp=long**2/area
+        comp=long_arc**2/area
         #redondez
-        redon=4*np.pi*area/long**2
+        redon=4*np.pi*area/long_arc**2
         #mínimo rectangulo
         rect = cv2.minAreaRect(cont)
         box = cv2.boxPoints(rect)
@@ -163,34 +174,40 @@ def obtener_caracteristicas(contornos,imagen):
         largo=np.max([a,b])
         corto=np.min([a,b])
         rel=largo/corto
-    
+        
         #rectangulo limite
         x,y,w,h=cv2.boundingRect(cont)
         rect_lim={"x":x,
                   "y":y,
                   "w":w,
                   "h":h}
-        if rel<1.5:
-            #cortar la imagen
-            imagen_cortada=imagen[y:y+h,x:x+w,:]
-            #hallar los momentos de Hu
-            ima_gris=cv2.cvtColor(imagen_cortada,cv2.COLOR_BGR2GRAY)
-            ret,th1 = cv2.threshold(ima_gris,100,255,cv2.THRESH_BINARY)
-            moments = cv2.moments(th1)
-            huMoments = cv2.HuMoments(moments)
-            diccionario={"Area":area,
-                         "Perimetro":long,
-                         "Centroide":cent,
-                         "Compacidad":comp,
-                         "Redondez":redon,
-                         "Minimo Rectangulo":box,
-                         "Lado largo":largo,
-                         "Lado corto":corto,
-                         "Relacion entre lados":rel,
-                         "Rectangulo limite":rect_lim,
-                         "Momentos de Hu":huMoments}
+        prop=[img_filename,"defecto"]+[0]*9+[i] 
+        #cortar la imagen
+        imagen_cortada=imagen[y:y+h,x:x+w,:]
+        #hallar los momentos de Hu
+        ima_gris=cv2.cvtColor(imagen_cortada,cv2.COLOR_BGR2GRAY)
+        ret,th1 = cv2.threshold(ima_gris,100,255,cv2.THRESH_BINARY)
+        moments = cv2.moments(th1)
+        huMoments = cv2.HuMoments(moments).flatten()
+        #print(huMoments)
+        #for i in range(0,7):
+        #    huMoments[i] =  -1* math.copysign(1.0, huMoments[i]) * math.log10(abs(huMoments[i]))
+        huMoments=huMoments.tolist()
         
-            caracteristicas.append(diccionario)
+        prop=[img_filename, img_category,long_arc,redon,rel]+huMoments+[i]
+        
+        if rel<1.5:
+                   
+            #caracteristicas.append(diccionario)
             imagenes.append(imagen_cortada)
             imagenes_umbralizadas.append(th1)
+        else:
+            prop[1]="ruido"    
+        
+        
+        caracteristicas.append(prop)
+
     return imagenes, imagenes_umbralizadas, caracteristicas
+
+    # Functions
+

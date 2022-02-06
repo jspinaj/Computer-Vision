@@ -4,6 +4,7 @@ Created on Sun Jan 16 18:12:48 2022
 
 @author: j2seb
 """
+
 #importación de librerías
 import math 
 import cv2     #Librería OpenCV
@@ -16,7 +17,9 @@ from PIL import Image
 def extraccion_ROI(ruta,img_category):
     imagen=cv2.imread(ruta)
     imagen=cv2.cvtColor(imagen,cv2.COLOR_BGR2RGB)
+    # copy to work over
     ima=imagen
+
     # tresholding
     ima_umb=umbral_hsv_rojo(ima)
 
@@ -29,13 +32,14 @@ def extraccion_ROI(ruta,img_category):
     
     #Segementation
     imagenROI,contornos=deteccion_ROI(ima, ima_dilatacion)
+    
     # feature detection
-    ima_color,ima_umbralizada,caracteristicas=obtener_caracteristicas(contornos,ima_final,ruta, img_category)
+    imagenROI,ima_umbralizada,caracteristicas=obtener_caracteristicas(contornos,ima_final,ruta, img_category,imagenROI)
     
     # process
-    ima_prueba=[ima,ima_umb,ima_llenado,ima_erosion,ima_apertura,ima_dilatacion,ima_final]
+    ima_process=[ima,ima_umb,ima_llenado,ima_erosion,ima_apertura,ima_dilatacion,ima_final]
 
-    return imagenROI,ima_umbralizada,caracteristicas,ima_prueba
+    return imagenROI,ima_umbralizada,caracteristicas,ima_process
     
     
 
@@ -135,16 +139,10 @@ def deteccion_ROI(imagen_inicial,imagen_regiones):
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
     edges = cv2.morphologyEx(imagen_regiones, cv2.MORPH_GRADIENT, kernel)
     contours, hierarchy = cv2.findContours(edges , cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    for i in range(len(contours)):
-        x,y,w,h=cv2.boundingRect(contours[i])
-        area=str(cv2.contourArea(contours[i]))
-        cv2.rectangle(ima_contornos,(x,y),(x+w,y+h),(120,255,0),15)
-        cv2.drawContours (ima_contornos, contours, i, (0, 0, 255), 20)
-        cv2.putText(ima_contornos,str(i),(x,y-10),2,10,(0,255,0),10)
+      
     return ima_contornos,contours
 
-def obtener_caracteristicas(contornos,imagen,img_filename, img_category):
-    
+def obtener_caracteristicas(contornos,imagen,img_filename, img_category,imagenROI): 
     caracteristicas=[]
     imagenes=[]
     imagenes_umbralizadas=[]
@@ -190,24 +188,31 @@ def obtener_caracteristicas(contornos,imagen,img_filename, img_category):
         moments = cv2.moments(th1)
         huMoments = cv2.HuMoments(moments).flatten()
         #print(huMoments)
-        #for i in range(0,7):
-        #    huMoments[i] =  -1* math.copysign(1.0, huMoments[i]) * math.log10(abs(huMoments[i]))
+        
+
+        for j in range(0,7):
+            if huMoments[j]!=0:
+                huMoments[j] =  -1* np.sign( huMoments[j]) * np.log10(abs(huMoments[j]))
+                
         huMoments=huMoments.tolist()
         
         prop=[img_filename, img_category,long_arc,redon,rel]+huMoments+[i]
         
-        if rel<1.5:
-                   
+        if rel<1.5 and redon>0.7:
+            cv2.rectangle(imagenROI,(x,y),(x+w,y+h),(120,255,0),15)
+            cv2.drawContours(imagenROI, contornos, i, (0, 0, 255), 20)
+            cv2.putText(imagenROI,str(i),(x,y-10),2,10,(0,255,0),10)       
             #caracteristicas.append(diccionario)
-            imagenes.append(imagen_cortada)
+            #imagenes.append(imagen_cortada)
             imagenes_umbralizadas.append(th1)
         else:
             prop[1]="ruido"    
-        
+            cv2.drawContours (imagenROI, contornos, i, (255, 0, 0), 20)
+            cv2.putText(imagenROI,str("r"+str(i)),(x+30,y+10),2,10,(0,255,0),10)
         
         caracteristicas.append(prop)
 
-    return imagenes, imagenes_umbralizadas, caracteristicas
+    return imagenROI, imagenes_umbralizadas, caracteristicas
 
     # Functions
 

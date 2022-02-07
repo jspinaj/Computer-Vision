@@ -37,6 +37,7 @@ def senalRectangular(ruta):
     edges = cv2.morphologyEx(ima_dilatacion, cv2.MORPH_GRADIENT, kernel)
     contours, hierarchy = cv2.findContours(edges , cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     caracteristicas, imagenesFinales =getCharacteristics(contours, ima_final)
+    return caracteristicas, imagenesFinales
 
     
 #--------------------------------- Tresholding Function------------------------------------   
@@ -123,7 +124,7 @@ def getCharacteristics(contornos,imagen):
     caracteristicasFinales=[]
     imagenes=[]
     for i in range(len(contornos)):
-        cont=contours[i]
+        cont=contornos[i]
         #Area del contorno
         area=cv2.contourArea(cont)
         #Longitud del contorno
@@ -192,7 +193,7 @@ def getCharacteristics(contornos,imagen):
             x_fin=rect_lim.get("x")+rect_lim.get("w")
             y_ini=rect_lim.get("y")
             y_fin=rect_lim.get("y")+rect_lim.get("h")
-            imagen_cortada=ima_final[y_ini:y_fin,x_ini:x_fin,:]
+            imagen_cortada=imagen[y_ini:y_fin,x_ini:x_fin,:]
             caracteristicasFinales.append(caracteristicas[i])
             imagenes.append(imagen_cortada)
         

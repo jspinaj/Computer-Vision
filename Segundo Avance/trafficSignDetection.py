@@ -19,7 +19,7 @@ def detectROI(path):
     image=cv2.imread(path)
     image=cv2.cvtColor(image,cv2.COLOR_BGR2RGB)
     
-    ## Detect ROI red signal ##
+    ## Detect ROI on Cr Channel##
     # thresholding image
     ima_umb=redTh(image)
     
@@ -31,7 +31,7 @@ def detectROI(path):
     ima_open=opening(ima_ero,22,22,"elipse")
     ima_dil_Cr=dilate(ima_open,20,20,10,"elipse")
     
-    ## Detect ROI for rectangular black signals##
+    ## Detect ROI for black signals##
     ima_umb=blackTh(image)
     
     #filling image

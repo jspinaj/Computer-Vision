@@ -34,10 +34,13 @@ def detectROI(path):
     ## Detect ROI for black signals##
     ima_umb=blackTh(image)
     
-    # filling and morphological operations
-    
     #filling image
     ima_fill=filling(ima_umb)
+    
+    #eliminate Cr ROI already found
+    ima_umb_inv=cv2.bitwise_not(ima_dil_Cr)
+    ima_fill = cv2.bitwise_and(ima_fill,ima_umb_inv,mask=None)
+    
     
     #morphological operation
     ima_ero=erode(ima_fill,20,5,8,"rect")
@@ -208,9 +211,9 @@ def getContourCharacteristics(contours):
         #Min Rectangle Relation
         a=cv2.arcLength(np.array([box[0],box[1]]),False)
         b=cv2.arcLength(np.array([box[0],box[3]]),False)
-        long=np.max([a,b])
-        short=np.min([a,b])
-        rel=long/short
+        longer=np.max([a,b])
+        shorter=np.min([a,b])
+        rel=longer/shorter
         #bounding rect
         x,y,w,h=cv2.boundingRect(cont)
         dictionary={"Area":area,
@@ -222,7 +225,8 @@ def getContourCharacteristics(contours):
                     "x":x,
                     "y":y,
                     "w":w,
-                    "h":h}
+                    "h":h,
+                    "Contorno":cont}
         characteristics.append(dictionary)
     return characteristics
         
@@ -236,6 +240,9 @@ def getRegionCharacteristics(characteristics,mask,image):
         x_fin=characteristics[i].get("x")+characteristics[i].get("w")
         y_ini=characteristics[i].get("y")
         y_fin=characteristics[i].get("y")+characteristics[i].get("h")
+        w=characteristics[i].get("w")
+        h=characteristics[i].get("h")
+        cont=characteristics[i].get("Contorno")
         #cropping image and mask
         cropped_image=image_masked[y_ini:y_fin,x_ini:x_fin]
         cropped_mask=mask[y_ini:y_fin,x_ini:x_fin]
@@ -244,19 +251,34 @@ def getRegionCharacteristics(characteristics,mask,image):
         hist = hist/np.sum(hist)
         r=otsu(hist)
         _,th = cv2.threshold(cropped_image,r,255,cv2.THRESH_BINARY)
+        #Move contour to cropped image coordinates
+        cont[:,:,1]=cont[:,:,1]-y_ini
+        cont[:,:,0]=cont[:,:,0]-x_ini
+        #Eliminate external regions
+        th1=edgeExternalRemoval(th.copy(),cont,w,h)
+        #calculate areas of region, threshold and threshold with edge removal
+        filled_area=np.sum(th!=0)
+        filled_area1=np.sum(th1!=0)
+        total_area=np.sum(cropped_mask!=0)
+        #update threshold if edge region removal is valid
+        area_percentage_eliminated=(filled_area-filled_area1)/total_area
+        if area_percentage_eliminated<0.2 :
+            th=th1
         #Calculate Characteristics
         moments = cv2.moments(th)
         huMoments = cv2.HuMoments(moments)
         huMoments = -1* np.sign(huMoments) * np.log10(np.abs(huMoments))
-        filled_area=np.sum(th!=0)
-        total_area=np.sum(cropped_mask!=0)
         fill_percentage=filled_area*100/total_area
+        H=entropy(hist)
+        #add region characteristics to dictionary
         diccionario={"Momentos de Hu":huMoments,
-                "Entropia":entropy(hist[i]),
+                "Entropia":H,
                 "Porcentaje de Area Rellena":fill_percentage,
                 "Umbral usado":r}
         characteristics[i].update(diccionario)
-        region_img.append(cropped_image)
+        #remove contour from dictionary
+        characteristics[i].pop("Contorno")
+        region_img.append(th)
     return characteristics,region_img
         
         
@@ -290,7 +312,19 @@ def otsu(hist):
 #--------------------------- Entropy Function-----------------------------
 
 def entropy(hist):
-    H=np.sum(np.where(hist>0,hist*np.log2(hist),0))
+    a=np.where(hist==0,0.1,hist)
+    H=np.sum(hist*np.log2(a))
     return H
 
-    
+#----------------------Eliminating edge noise-------------------
+
+def edgeExternalRemoval(thresh, contour,w,h):
+        #remove bounding regions
+        for point in contour:
+            x=point[0][0]
+            y=point[0][1]
+            sx=int(np.sign(w/2-x))
+            sy=int(np.sign(h/2-y))
+            desp=(x+1*sx,y+1*sy)
+            cv2.floodFill(thresh, None, desp, 0);
+        return thresh

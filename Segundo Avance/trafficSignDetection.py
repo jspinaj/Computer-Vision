@@ -264,6 +264,7 @@ def getRegionCharacteristics(characteristics,mask,image):
         area_percentage_eliminated=(filled_area-filled_area1)/total_area
         if area_percentage_eliminated<0.2 :
             th=th1
+            filled_area=filled_area1
         #Calculate Characteristics
         moments = cv2.moments(th)
         huMoments = cv2.HuMoments(moments)

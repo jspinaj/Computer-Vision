@@ -102,7 +102,7 @@ def detectROI(path):
     return characteristics, region, ima_ROI
 
 
-def dict2list(diccionary,keys=None):
+def dict2list(dictionary,keys=None):
     values=[]
     if keys==None:
         keys=dictionary.keys()
@@ -288,7 +288,6 @@ def getRegionCharacteristics(characteristics,mask,image):
                      "Quinto Momento":huMoments[4,0],
                      "Sexto Momento":huMoments[5,0],
                      "Septimo Momento":huMoments[6,0],
-                     "Primer Momento":huMoments[7,0],
                     "Entropia":H,
                     "Porcentaje de Area Rellena":fill_percentage,
                     "Umbral usado":r}

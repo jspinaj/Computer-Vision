@@ -100,6 +100,15 @@ def detectROI(path):
         cv2.putText(ima_ROI,str(i),(x,y-10),2,10,(0,255,0),10)
     
     return characteristics, region, ima_ROI
+
+
+def dict2list(diccionary,keys=None):
+    values=[]
+    if keys==None:
+        keys=dictionary.keys()
+    for key in keys:
+        values.append(dictionary.get(key))
+    return keys, values
     
     
 #--------------------------------- Tresholding Function------------------------------------   
@@ -264,6 +273,7 @@ def getRegionCharacteristics(characteristics,mask,image):
         area_percentage_eliminated=(filled_area-filled_area1)/total_area
         if area_percentage_eliminated<0.2 :
             th=th1
+            filled_area=filled_area1
         #Calculate Characteristics
         moments = cv2.moments(th)
         huMoments = cv2.HuMoments(moments)
@@ -271,10 +281,17 @@ def getRegionCharacteristics(characteristics,mask,image):
         fill_percentage=filled_area*100/total_area
         H=entropy(hist)
         #add region characteristics to dictionary
-        diccionario={"Momentos de Hu":huMoments,
-                "Entropia":H,
-                "Porcentaje de Area Rellena":fill_percentage,
-                "Umbral usado":r}
+        diccionario={"Primer Momento":huMoments[0,0],
+                     "Segundo Momento":huMoments[1,0],
+                     "Tercer Momento":huMoments[2,0],
+                     "Cuarto Momento":huMoments[3,0],
+                     "Quinto Momento":huMoments[4,0],
+                     "Sexto Momento":huMoments[5,0],
+                     "Septimo Momento":huMoments[6,0],
+                     "Primer Momento":huMoments[7,0],
+                    "Entropia":H,
+                    "Porcentaje de Area Rellena":fill_percentage,
+                    "Umbral usado":r}
         characteristics[i].update(diccionario)
         #remove contour from dictionary
         characteristics[i].pop("Contorno")

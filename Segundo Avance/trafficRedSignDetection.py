@@ -2,7 +2,7 @@
 """
 Created on Sun Jan 16 18:12:48 2022
 
-@author: miarodriguezur, jspinaj
+@author: miarodriguezur, jspinaj  
 """
 #importación de librerías
 import cv2     #Librería OpenCV
@@ -31,32 +31,13 @@ def detectROI(path):
     ima_open=opening(ima_ero,22,22,"elipse")
     ima_dil_Cr=dilate(ima_open,20,20,9,"elipse")
     
-    ## Detect ROI for black signals##
-    ima_umb=blackTh(image)
-    
-    #filling image
-    ima_fill=filling(ima_umb)
-    
-    #eliminate Cr ROI already found
-    ima_umb_inv=cv2.bitwise_not(ima_dil_Cr.copy())
-    ima_fill = cv2.bitwise_and(ima_fill,ima_umb_inv,mask=None)
-    
-    
-    #morphological operation
-    ima_ero=erode(ima_fill,20,5,8,"rect")
-    ima_open=opening(ima_ero,15,15,"rect")
-    ima_dil_bk=dilate(ima_open,20,6,10,"rect")
-    
     # Segmentation
     kernel = cv2.getStructuringElement(cv2.MORPH_RECT,(3,3))
     edges_Cr = cv2.morphologyEx(ima_dil_Cr, cv2.MORPH_GRADIENT, kernel)
-    edges_bk = cv2.morphologyEx(ima_dil_bk, cv2.MORPH_GRADIENT, kernel)
     contours_Cr, _ = cv2.findContours(edges_Cr , cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-    contours_bk, _ = cv2.findContours(edges_bk , cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
     
     #Fetch contour characteristics
     characteristics_Cr=getContourCharacteristics(contours_Cr)
-    characteristics_bk=getContourCharacteristics(contours_bk)
     
     ##Filtered out##
     #Filtering Cr characteristics
@@ -66,29 +47,17 @@ def detectROI(path):
         if rel>1.5 :
             delete.append(characteristics_Cr[i])
     for char in delete:
-        characteristics_Cr.remove(char)
-        
-    #Filtering black characteristics
-    delete=[]
-    for i in range(len(characteristics_bk)):
-        com=characteristics_bk[i].get("Compacidad")
-        if com>24 or com<21 :
-            delete.append(characteristics_bk[i])
-    for char in delete:
-        characteristics_bk.remove(char)
-        
+        characteristics_Cr.remove(char)      
     
     #Fetch Region characteristics
     char_Cr,region_Cr=getRegionCharacteristics(characteristics_Cr,ima_dil_Cr,image)
-    char_bk,region_Bk=getRegionCharacteristics(characteristics_bk,ima_dil_bk,image)
     
-    characteristics=char_Cr+char_bk
-    region=region_Cr+region_Bk
+    characteristics=char_Cr
+    region=region_Cr
     
     ##Show ROI on the image
     ima_ROI=image.copy()
     cv2.drawContours(ima_ROI, contours_Cr, -1, (255, 0, 0), 20)
-    cv2.drawContours(ima_ROI, contours_bk, -1, (0, 0, 255), 20)
     for i in range(len(characteristics)):
         
         x=characteristics[i].get("x")
@@ -277,7 +246,6 @@ def getRegionCharacteristics(characteristics,mask,image):
         #Calculate Characteristics
         moments = cv2.moments(th)
         huMoments = cv2.HuMoments(moments)
-        np.where
         huMoments = -1* np.sign(huMoments) * np.log10(np.abs(huMoments))
         fill_percentage=filled_area*100/total_area
         H=entropy(hist)
@@ -322,7 +290,7 @@ def otsu(hist):
             u0[i]=b[i]/w0[i]
         if w1[i]!=0:
             u1[i]=(b[255]-b[i])/w1[i]
-    Q=w0*w1*(u0-u1)**2
+    Q=w0*w1*(u1-u0)
     r=np.argmax(Q)
     return r
 

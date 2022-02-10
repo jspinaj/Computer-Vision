@@ -2,7 +2,7 @@
 """
 Created on Sun Jan 16 18:12:48 2022
 
-@author: miarodriguezur, jspinaj
+@author: miarodriguezur, jspinaj  
 """
 #importación de librerías
 import cv2     #Librería OpenCV

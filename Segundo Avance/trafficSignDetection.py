@@ -277,6 +277,7 @@ def getRegionCharacteristics(characteristics,mask,image):
         #Calculate Characteristics
         moments = cv2.moments(th)
         huMoments = cv2.HuMoments(moments)
+        np.where
         huMoments = -1* np.sign(huMoments) * np.log10(np.abs(huMoments))
         fill_percentage=filled_area*100/total_area
         H=entropy(hist)
